@@ -158,5 +158,30 @@ dat_new %>%
   modify_spanning_header(all_stat_cols() ~ "**Do you enjoy school?**")
 ```
 
+# Initial visualizations
+
+```{r}
+# set ggplot theme
+theme_set(theme_bw())
+
+ggplot(dat_new,
+       aes(x = FCSCHOOL)) + 
+  geom_bar() + 
+  labs(x = "Satisfaction with school")
+
+ggplot(
+  dat_new,
+  aes(x = SEENJOY,
+      y = FHWKHRS)) +
+  geom_boxplot()
+
+counts <- table(dat_new$SEENJOY, dat_new$SEGRADES)
+mosaicplot(counts, 
+           xlab = "Enjoys School", 
+           ylab = "Grades",
+           main = "Enjoyment by grades")
+```
+
+
 
 
