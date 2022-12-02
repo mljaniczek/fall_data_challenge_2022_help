@@ -1,0 +1,162 @@
+---
+title: "Tidy data loading, labelling, summarizing"
+knit: (function(input_file, encoding) {
+    out_dir <- 'docs';
+    rmarkdown::render(input_file,
+      encoding=encoding,
+      output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
+author: "Margaret Janiczek"
+date: "2022-12-02"
+output: 
+  html_document:
+    toc: true
+    number_sections: true
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Data is downloaded from: https://thisisstatistics.org/falldatachallenge/. 
+
+Details on the dataset and prompt [here](https://docs.google.com/document/d/1qXnbS4fjuQ9hbRxGaSmix3CGb3FUi6U5/edit)
+
+[Full 2019 codebook describing data](https://nces.ed.gov/nhes/data/2019/pfi/cbook_pfi_pu.pdf)
+
+[Curated dataset codebook (for just the 75 variables in the dataset)](https://docs.google.com/spreadsheets/d/1X7fDKA_BZjSDwUCIo_3fax1viY1_wcJH/edit?usp=sharing&ouid=108879154306217142702&rtpof=true&sd=true)
+
+
+
+# Load data and libraries
+Load libraries
+
+```{r message = FALSE}
+
+#install.packages("gtsummary", "labelled", "tidyverse")
+library(tidyverse)
+library(labelled)
+library(gtsummary)
+```
+
+
+Load data, make sure either file in same folder as your Rmd or specify correct path. 
+
+```{r}
+dat <- readxl::read_xlsx("2022 Fall Data Challenge Dataset.xlsx")
+```
+
+Select a few variables to work with
+
+```{r}
+dat_small <- dat %>%
+  select(SEENJOY, SEGRADES, FHWKHRS, FCSCHOOL)
+```
+
+# Summarize data and check for missingness
+
+```{r}
+summary(dat_small) 
+```
+
+Now I notice some negative levels so I went to the detailed code book and found that means "Valid skip". 
+
+I will recode those to be "NA" before deciding what to do with them. You can choose what to do with missing data - impute or exclude.
+
+```{r}
+dat_small[dat_small== -1] <- NA
+```
+
+# Make categorical variables into factors
+
+According to code book several of these are categorical variables so we need to recode them so R doesn't interpret them as numeric. Here's a way to do that in bulk, basically either just select all the ones you want categorical or deselect the continuous ones. 
+
+```{r}
+# Here I'm mutated across all columns EXCEPT the continuous "FHWKHRS" and making them factor variables
+
+dat_small <- dat_small %>%
+  mutate(
+    across(
+      .cols = !c(FHWKHRS), as.factor
+    )
+  ) %>%
+  drop_na() # for now excluding missing observations
+
+# check on how that did
+summary(dat_small)
+```
+
+
+
+# Labeling variables and factor levels 
+
+For presentation purposes it is often useful to label your variables and factor levels. 
+
+
+Now lets label the levels using the `forcats` package. 
+
+```{r}
+
+# first make named vectors for the level labels
+
+fcschool_labels <- c(
+  "Very satisfied" ="1",
+   "Somewhat satisfied" = "2",
+   "Somewhat dissatisfied" = "3",
+   "Very dissatisfied" = "4"
+)
+
+seenjoy_labels <- c(
+  "Strongly agree" = "1",
+  "Agree" = "2",
+  "Disagree" = "3", 
+  "Strongly Disagree" = "4"
+)
+
+segrades_labels <- c(
+  "Mostly A's" = "1", 
+  "Mostly B's" = "2",
+  "Mostly C's" = "3", 
+  "Mostly D's or lower" = "4", 
+  "School does not give these grades" = "5"
+)
+
+#making new dataframe so we can see difference
+dat_new <- dat_small %>%
+  mutate(
+    FCSCHOOL = fct_recode(FCSCHOOL, !!!fcschool_labels),
+    SEENJOY = fct_recode(SEENJOY, !!!seenjoy_labels), 
+    SEGRADES = fct_recode(SEGRADES, !!!segrades_labels)
+  )
+
+```
+
+And label the column titles using the `labelled` packages. 
+
+```{r}
+
+
+var_labels <- c(
+  SEENJOY = "Enjoyment of school",
+  SEGRADES = "Grades",
+  FHWKHRS = "Hours spent doing homework",
+  FCSCHOOL = "Satisfaction with school"
+)
+
+
+dat_new <- set_variable_labels(dat_new, .labels = var_labels)
+```
+
+# Pretty Table 1
+
+Now we can make a pretty table summarizing the data. 
+
+```{r}
+dat_new %>%
+  tbl_summary(by = SEENJOY) %>%
+  add_p() %>%
+  modify_spanning_header(all_stat_cols() ~ "**Do you enjoy school?**")
+```
+
+
+
