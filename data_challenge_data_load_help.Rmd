@@ -50,7 +50,7 @@ Select a few variables to work with
 
 ```{r}
 dat_small <- dat %>%
-  select(SEENJOY, SEGRADES, FHWKHRS, FCSCHOOL)
+  select(SEENJOY, SEGRADES, FHWKHRS, FCSCHOOL, ALLGRADEX)
 ```
 
 # Summarize data and check for missingness
@@ -85,6 +85,28 @@ dat_small <- dat_small %>%
 # check on how that did
 summary(dat_small)
 ```
+# Collapse a categorical variable
+Let's make a new categorical variable based on "ALLGRADEX", where we collapse into Elementary, Middle, High school, College. 
+
+```{r}
+#collapse factors manually into groups
+dat_small <- dat_small %>%
+  mutate(gradelevel = fct_collapse(ALLGRADEX,
+           Elementary = c("2", "3", "4", "5"),
+           Middle = c("6", "7", "8"),
+           High = c("9", "10", "11", "12"),
+           College = c("13", "14", "15")))
+
+summary(dat_small$ALLGRADEX)
+summary(dat_small$gradelevel)
+```
+
+Okay now lets get rid of that ALLGRADEX variable going forward. 
+
+```{r}
+dat_small <- dat_small %>% select(-ALLGRADEX)
+```
+
 
 
 
@@ -140,7 +162,8 @@ var_labels <- c(
   SEENJOY = "Enjoyment of school",
   SEGRADES = "Grades",
   FHWKHRS = "Hours spent doing homework",
-  FCSCHOOL = "Satisfaction with school"
+  FCSCHOOL = "Satisfaction with school",
+  gradelevel = "Grade Level"
 )
 
 
@@ -153,9 +176,7 @@ Now we can make a pretty table summarizing the data.
 
 ```{r}
 dat_new %>%
-  tbl_summary(by = SEENJOY) %>%
-  add_p() %>%
-  modify_spanning_header(all_stat_cols() ~ "**Do you enjoy school?**")
+  tbl_summary(by = gradelevel) 
 ```
 
 # Initial visualizations
@@ -175,7 +196,7 @@ ggplot(
       y = FHWKHRS)) +
   geom_boxplot()
 
-counts <- table(dat_new$SEENJOY, dat_new$SEGRADES)
+counts <- table(dat_new$SEENJOY, dat_new$gradelevel)
 mosaicplot(counts, 
            xlab = "Enjoys School", 
            ylab = "Grades",
