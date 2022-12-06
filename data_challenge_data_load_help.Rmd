@@ -74,7 +74,7 @@ According to code book several of these are categorical variables so we need to 
 ```{r}
 # Here I'm mutated across all columns EXCEPT the continuous "FHWKHRS" and making them factor variables
 
-dat_small <- dat_small %>%
+dat_new <- dat_small %>%
   mutate(
     across(
       .cols = !c(FHWKHRS), as.factor
@@ -83,19 +83,22 @@ dat_small <- dat_small %>%
   drop_na() # for now excluding missing observations
 
 # check on how that did
-summary(dat_small)
+summary(dat_new)
 ```
 # Collapse a categorical variable
-Let's make a new categorical variable based on "ALLGRADEX", where we collapse into Elementary, Middle, High school, College. 
+Let's make a new categorical variable based on "ALLGRADEX", where we collapse into Elementary, Middle, High school, College. Also I am making a new "SEENJOY"
 
 ```{r}
 #collapse factors manually into groups
-dat_small <- dat_small %>%
+dat_new2 <- dat_new %>%
   mutate(gradelevel = fct_collapse(ALLGRADEX,
            Elementary = c("2", "3", "4", "5"),
            Middle = c("6", "7", "8"),
            High = c("9", "10", "11", "12"),
-           College = c("13", "14", "15")))
+           College = c("13", "14", "15")),
+          SEENJOY2 = fct_collapse(SEENJOY,
+      Yes = c("3", "4"),
+      No = c("1", "2")))
 
 summary(dat_small$ALLGRADEX)
 summary(dat_small$gradelevel)
@@ -104,7 +107,7 @@ summary(dat_small$gradelevel)
 Okay now lets get rid of that ALLGRADEX variable going forward. 
 
 ```{r}
-dat_small <- dat_small %>% select(-ALLGRADEX)
+dat_new2 <- dat_new2 %>% select(-c(ALLGRADEX, SEENJOY))
 ```
 
 
@@ -128,12 +131,12 @@ fcschool_labels <- c(
    "Very dissatisfied" = "4"
 )
 
-seenjoy_labels <- c(
-  "Strongly agree" = "1",
-  "Agree" = "2",
-  "Disagree" = "3", 
-  "Strongly Disagree" = "4"
-)
+# seenjoy_labels <- c(
+#   "Strongly agree" = "1",
+#   "Agree" = "2",
+#   "Disagree" = "3", 
+#   "Strongly Disagree" = "4"
+# )
 
 segrades_labels <- c(
   "Mostly A's" = "1", 
@@ -144,10 +147,10 @@ segrades_labels <- c(
 )
 
 #making new dataframe so we can see difference
-dat_new <- dat_small %>%
+dat_new3 <- dat_new2 %>%
   mutate(
     FCSCHOOL = fct_recode(FCSCHOOL, !!!fcschool_labels),
-    SEENJOY = fct_recode(SEENJOY, !!!seenjoy_labels), 
+    #SEENJOY = fct_recode(SEENJOY, !!!seenjoy_labels), 
     SEGRADES = fct_recode(SEGRADES, !!!segrades_labels)
   )
 
@@ -159,15 +162,16 @@ And label the column titles using the `labelled` packages.
 
 
 var_labels <- c(
-  SEENJOY = "Enjoyment of school",
+  #SEENJOY = "Enjoyment of school",
   SEGRADES = "Grades",
   FHWKHRS = "Hours spent doing homework",
   FCSCHOOL = "Satisfaction with school",
-  gradelevel = "Grade Level"
+  gradelevel = "Grade Level",
+  SEENJOY2 = "Enjoyment of school"
 )
 
 
-dat_new <- set_variable_labels(dat_new, .labels = var_labels)
+dat_new3 <- set_variable_labels(dat_new3, .labels = var_labels)
 ```
 
 # Pretty Table 1
@@ -175,7 +179,7 @@ dat_new <- set_variable_labels(dat_new, .labels = var_labels)
 Now we can make a pretty table summarizing the data. 
 
 ```{r}
-dat_new %>%
+dat_new3 %>%
   tbl_summary(by = gradelevel) 
 ```
 
@@ -185,23 +189,37 @@ dat_new %>%
 # set ggplot theme
 theme_set(theme_bw())
 
-ggplot(dat_new,
+ggplot(dat_new3,
        aes(x = FCSCHOOL)) + 
   geom_bar() + 
   labs(x = "Satisfaction with school")
 
 ggplot(
-  dat_new,
-  aes(x = SEENJOY,
+  dat_new3,
+  aes(x = SEENJOY2,
       y = FHWKHRS)) +
   geom_boxplot()
 
-counts <- table(dat_new$SEENJOY, dat_new$gradelevel)
+counts <- table(dat_new3$SEENJOY2, dat_new3$gradelevel)
 mosaicplot(counts, 
            xlab = "Enjoys School", 
            ylab = "Grades",
            main = "Enjoyment by grades")
 ```
+
+# Model summaries using gtsummary
+
+```{r}
+
+mod1 <- glm(
+  SEENJOY2 ~ .,
+  data = dat_new3, 
+  family = "binomial"
+)
+
+tbl_regression(mod1, exponentiate = TRUE)
+```
+
 
 
 
